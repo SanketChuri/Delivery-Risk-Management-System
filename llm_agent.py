@@ -58,29 +58,30 @@ def build_fallback_brief(row, raw_content=""):
         )
 
     return {
-        "risk_explanation": raw_content if raw_content else explanation,
+        # "risk_explanation": raw_content if raw_content else explanation,
+        "risk_explanation" : explanation,
         "ops_recommendation": ops_action,
         "customer_message": customer_message,
     }
 
-def parse_plain_text(content):
-    result = {
-        "risk_explanation": "",
-        "ops_recommendation": "",
-        "customer_message": ""
-    }
+# def parse_plain_text(content):
+#     result = {
+#         "risk_explanation": "",
+#         "ops_recommendation": "",
+#         "customer_message": ""
+#     }
 
-    lines = content.split("\n")
+#     lines = content.split("\n")
 
-    for line in lines:
-        if "Risk Explanation:" in line:
-            result["risk_explanation"] = line.split(":", 1)[1].strip()
-        elif "Ops Recommendation:" in line:
-            result["ops_recommendation"] = line.split(":", 1)[1].strip()
-        elif "Customer Message:" in line:
-            result["customer_message"] = line.split(":", 1)[1].strip()
+#     for line in lines:
+#         if "Risk Explanation:" in line:
+#             result["risk_explanation"] = line.split(":", 1)[1].strip()
+#         elif "Ops Recommendation:" in line:
+#             result["ops_recommendation"] = line.split(":", 1)[1].strip()
+#         elif "Customer Message:" in line:
+#             result["customer_message"] = line.split(":", 1)[1].strip()
 
-    return result
+#     return result
 
 def is_driver_assigned(row) -> bool:
     driver_id = str(row.get("driver_id", "")).strip().lower()
@@ -142,6 +143,23 @@ def generate_ai_brief(row):
     
 
     try:
-        return json.loads(content)
+        parsed = json.loads(content)
+
+        # Some model responses are double-encoded JSON strings.
+        if isinstance(parsed, str):
+            parsed = json.loads(parsed)
+
+        if isinstance(parsed, dict):
+            parsed["customer_message"] = override_customer_message(
+                row, parsed.get("customer_message", "")
+            )
+            return parsed
     except Exception:
-        return build_fallback_brief(row, raw_content=content)
+        # return build_fallback_brief(row, raw_content=content)
+        pass
+
+    fallback = build_fallback_brief(row, raw_content=content)
+    fallback["customer_message"] = override_customer_message(
+        row, fallback["customer_message"]
+    )
+    return fallback
